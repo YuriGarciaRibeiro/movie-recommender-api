@@ -97,17 +97,22 @@ class MyGeneticAlgorithm(Algorithm):
         #pega todos os filmes que tenham a media maior que a media do usuario
         movies_user_not_watched_mean = [movie for movie in movies_user_not_watched_mean if movie['mean'] > mean_user]
 
-        #pega os 10 filmes com as maiores notas
-        movies_user_not_watched_mean = movies_user_not_watched_mean[:10]
-
-        
-
-
-
-        if len(ratings_movies) > 0:
-            mean_ = np.mean([obj_.rating for obj_ in ratings_movies])
+        #mega a media dos filmes que tenham a media maior que a media do usuario
+        mean_movies_user_not_watched_mean = 0.0
+        if len(movies_user_not_watched_mean) > 0:
+            mean_movies_user_not_watched_mean = np.mean([obj_['mean'] for obj_ in movies_user_not_watched_mean])
         else:
-            mean_ = 0.0
+            mean_movies_user_not_watched_mean = 0.0
 
-        return (mean_, )
+
+
+
+
+
+
+        print((mean_movies_user_not_watched_mean * 0.6 ) + (len(movies_user_not_watched_mean) * 0.3) + (mean_user * 0.1), )
+
+        #media final igual a nota media dos filmes q o usuario nao assistiu e tem media maior que a media do usuario + numero de filmes que o usuario nao assistiu e tem media maior que a media do usuario + nota media dos filmes que o usuario ja assistiu
+        return ((mean_movies_user_not_watched_mean * 0.6 ) + (len(movies_user_not_watched_mean) * 0.3) + (mean_user * 0.1), )
+        
 
