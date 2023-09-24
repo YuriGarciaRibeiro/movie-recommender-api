@@ -49,8 +49,6 @@ class MyGeneticAlgorithm(Algorithm):
         if len(ratings_movies) == 0:
             return (0.0, )
         
-    
-
         
         #pega os generos mais assistidos pelo usuario
         genres_user = []
@@ -65,14 +63,15 @@ class MyGeneticAlgorithm(Algorithm):
         
 
         #pega os filmes que tenham os generos mais assistidos pelo usuario
+        genres_user_set = set(genres_user)
         movies_user = []
-        for movie in ratings_movies:
-            genres_movie = MovieRepository.find_by_id(self.db, movie.movieId).genres.split('|')
-            for genre in genres_movie:
-                if genre in genres_user:
-                    movies_user.append(movie.movieId)
-                    break
 
+        for movie in ratings_movies:
+            genres_movie = set(MovieRepository.find_by_id(self.db, movie.movieId).genres.split('|'))
+            if genres_movie & genres_user_set:  # Verifica interseção de conjuntos (se têm gêneros em comum)
+                movies_user.append(movie.movieId)
+
+        
         #dos filmes que tem os generos mais assistidos pelo usuario, pega os que o usuario ainda nao assistiu
         movies_user = list(set(movies_user) - set([movie.movieId for movie in ratings_movies_user]))
 
@@ -82,9 +81,13 @@ class MyGeneticAlgorithm(Algorithm):
         movies_user_not_watched.sort(key=lambda x: x.rating, reverse=True)
 
         #pega a nota media para cada filmes que o usuario ainda nao assistiu
-        movies_user_not_watched_mean = []
-        for movie in movies_user_not_watched:
-            movies_user_not_watched_mean.append({'movieId': movie.movieId, 'mean': np.mean([obj_.rating for obj_ in RatingsRepository.find_by_movieid(self.db, movie.movieId)])})
+        movies_user_not_watched_mean = [
+                {
+                    'movieId': movie.movieId,
+                    'mean': np.mean([obj_.rating for obj_ in RatingsRepository.find_by_movieid(self.db, movie.movieId)])
+                }
+                for movie in movies_user_not_watched
+            ]
 
         #pega a nota media dos filmes que o usuario ja assistiu
         mean_user = 0.0
@@ -105,14 +108,34 @@ class MyGeneticAlgorithm(Algorithm):
             mean_movies_user_not_watched_mean = 0.0
 
 
+        #pega o ano de lancamento dos filmes que o usuario ja assistiu
+        years_user = [MovieRepository.find_by_id(self.db, movie.movieId).year for movie in ratings_movies_user]
 
 
+        #pega a media dos anos de lancamento dos filmes que o usuario ja assistiu
+        mean_years_user = 0.0
+        if len(years_user) > 0:
+            mean_years_user = np.mean(years_user)
+        else:
+            mean_years_user = 0.0
+
+        #pega todos os filmes que tenham o ano de lançamento proximo da media dos anos de lancamento dos filmes que o usuario ja assistiu (5 anos de diferença para maimovies_user_not_watched_mean s ou para menos))) 
+        movies_years_user_not_watched_mean = []
+        for movie in movies_user_not_watched:
+            if  mean_user + 5 > abs(MovieRepository.find_by_id(self.db, movie.movieId).year) > mean_years_user - 5:
+                movies_years_user_not_watched_mean.append(movie.movieId)
+
+        fitness = 0.0
+        fitness += mean_movies_user_not_watched_mean * 0.3 #nota media dos filmes que o usuario nao assistiu e tem media maior que a media do usuario
+        fitness += len(movies_user_not_watched_mean) * 0.1#numero de filmes que o usuario nao assistiu e tem media maior que a media do usuario
+        fitness += mean_user * 0.2 #nota media dos filmes que o usuario ja assistiu
+        fitness += mean_years_user * 0.1#media dos anos de lancamento dos filmes que o usuario ja assistiu
+        fitness += len(movies_years_user_not_watched_mean) * 0.3 #numero de filmes que o usuario nao assistiu e tem media maior que a media do usuario e tem o ano de lancamento proximo da media dos anos de lancamento dos filmes que o usuario ja assistiu (5 anos de diferença para mais ou para menos)))
 
 
-
-        print((mean_movies_user_not_watched_mean * 0.6 ) + (len(movies_user_not_watched_mean) * 0.3) + (mean_user * 0.1), )
+        print(fitness)
 
         #media final igual a nota media dos filmes q o usuario nao assistiu e tem media maior que a media do usuario + numero de filmes que o usuario nao assistiu e tem media maior que a media do usuario + nota media dos filmes que o usuario ja assistiu
-        return ((mean_movies_user_not_watched_mean * 0.6 ) + (len(movies_user_not_watched_mean) * 0.3) + (mean_user * 0.1), )
+        return (fitness,  )
         
 
